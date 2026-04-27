@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/auth-helpers-n
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/onboard'];
+const PUBLIC_PATHS = ['/login', '/onboard', '/auth'];
 const OPERATOR_PREFIXES = ['/calls', '/tasks', '/ai', '/brief', '/boss', '/code', '/time', '/master', '/admin', '/platform'];
 
 function routeForRole(role: string, req: NextRequest): NextResponse | null {
