@@ -1,7 +1,12 @@
 import { generateWithCost } from '@/lib/ai/claude';
 import { createServiceClient } from '@/lib/supabase/server';
 
-export async function POST() {
+export async function POST(req: Request) {
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const supabase = createServiceClient();
 
   const now = new Date();

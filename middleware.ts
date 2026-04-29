@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -27,7 +28,7 @@ function routeForRole(role: string, req: NextRequest): NextResponse | null {
     case 'manager':
     case 'va': {
       // Apprentice-only routes — operators redirect to home
-      const APPRENTICE_ONLY = ['/dashboard', '/guide', '/portfolio'];
+      const APPRENTICE_ONLY = ['/dashboard', '/guide', '/portfolio', '/apprentice-tasks'];
       if (APPRENTICE_ONLY.some(p => path === p || path.startsWith(p + '/'))) {
         return NextResponse.redirect(new URL('/', req.url));
       }
@@ -79,7 +80,14 @@ export async function middleware(req: NextRequest) {
   }
 
   if (session && !isPublic) {
-    const { data: user } = await supabase
+    // Use service role for role lookup — users table RLS is scoped to business_id,
+    // which apprentices don't have, so anon-key queries return null for their own row.
+    const serviceClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    const { data: user } = await serviceClient
       .from('users')
       .select('role')
       .eq('id', session.user.id)

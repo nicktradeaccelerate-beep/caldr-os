@@ -63,7 +63,7 @@ function TaskCard({ task }: { task: PlatformTask }) {
   const title = task.title ?? task.text;
   const projectName = task.projects?.name;
   return (
-    <Link href={`/apprentice/tasks/${task.id}`} style={{ textDecoration: 'none' }}>
+    <Link href={`/apprentice-tasks/${task.id}`} style={{ textDecoration: 'none' }}>
       <div style={{
         background: 'white',
         border: '1px solid #E2E8F0',

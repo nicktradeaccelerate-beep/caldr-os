@@ -52,6 +52,7 @@ export async function POST(req: Request) {
 
     // Fire-and-forget: check if teaching variants need regeneration
     // (operator masterprompt context may have changed)
+    // V1.1: change trigger from page load to masterprompt regeneration event for cost efficiency
     const userRole = (user as unknown as { role: string }).role;
     if (['operator', 'owner'].includes(userRole)) {
       const baseUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000';

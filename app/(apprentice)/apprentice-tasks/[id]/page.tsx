@@ -140,7 +140,7 @@ export default function TaskDetailPage() {
     return (
       <div style={{ padding: 28 }}>
         <div style={{ color: '#64748B', fontSize: 14 }}>Task not found.</div>
-        <Link href="/apprentice/dashboard" style={{ color: '#1B4332', fontSize: 13 }}>← Back to dashboard</Link>
+        <Link href="/dashboard" style={{ color: '#1B4332', fontSize: 13 }}>← Back to dashboard</Link>
       </div>
     );
   }
