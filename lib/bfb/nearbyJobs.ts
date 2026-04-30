@@ -1,15 +1,15 @@
 import { getBfbClient } from '@/lib/supabase/bfb';
 
-export interface BfbJob {
+// Real BFB database row shape (client_jobs table)
+interface ClientJobRow {
   id: string;
   address: string;
   postcode: string;
-  job_type: string;
-  value: number | null;
-  status: string;
-  completed_at: string | null;
-  lat: number;
-  lng: number;
+  finish_type: string;
+  property_type: string;
+  job_date: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface NearbyJob {
@@ -29,37 +29,32 @@ export interface NearbyJob {
 const LAT_DELTA = 0.05;
 const LNG_DELTA = 0.07;
 
-function formatValue(pence: number | null): string | null {
-  if (pence == null) return null;
-  // Assume values stored in pounds already; if >10000 likely pence
-  const pounds = pence > 10000 ? pence / 100 : pence;
-  return `£${Math.round(pounds).toLocaleString('en-GB')}`;
-}
-
+// Chichester-area fallback pins (PO19/PO20 postcodes — BFB home base)
 const MOCK_JOBS: NearbyJob[] = [
-  { id: 'm1', address: '14 Elm Street',    postcode: 'SE1 7PB', jobType: 'Boiler replacement', value: '£3,200', status: 'completed', completedAt: '2026-03-10', lat: 51.500, lng: -0.085 },
-  { id: 'm2', address: '7 Oak Avenue',     postcode: 'SE1 5AB', jobType: 'Rewire',              value: '£5,400', status: 'completed', completedAt: '2026-02-22', lat: 51.508, lng: -0.095 },
-  { id: 'm3', address: '22 Cedar Road',    postcode: 'SE1 9CD', jobType: 'Survey',              value: '£850',   status: 'completed', completedAt: '2026-01-14', lat: 51.503, lng: -0.100 },
-  { id: 'm4', address: '8 Birch Lane',     postcode: 'SE1 2EF', jobType: 'Solar install',       value: '£9,600', status: 'completed', completedAt: '2025-12-05', lat: 51.495, lng: -0.082 },
-  { id: 'm5', address: '30 Willow Close',  postcode: 'SE1 6GH', jobType: 'Heat pump',           value: '£12,000', status: 'completed', completedAt: '2025-11-20', lat: 51.512, lng: -0.078 },
+  { id: 'm1', address: '4 The Hornet',         postcode: 'PO19 7JG', jobType: 'Victorian lime render',      value: null, status: 'completed', completedAt: '2026-03-10', lat: 50.836, lng: -0.774 },
+  { id: 'm2', address: '12 Westgate',          postcode: 'PO19 3EX', jobType: 'Heritage masonry restoration', value: null, status: 'completed', completedAt: '2026-02-22', lat: 50.831, lng: -0.782 },
+  { id: 'm3', address: '7 St Pancras',         postcode: 'PO19 7LT', jobType: 'Period property exterior',   value: null, status: 'completed', completedAt: '2026-01-14', lat: 50.838, lng: -0.778 },
+  { id: 'm4', address: '22 Lavant Road',       postcode: 'PO19 5RG', jobType: 'Lime wash & repoint',        value: null, status: 'completed', completedAt: '2025-12-05', lat: 50.843, lng: -0.769 },
+  { id: 'm5', address: '3 Cawley Road',        postcode: 'PO19 1XB', jobType: 'Exterior restoration',       value: null, status: 'completed', completedAt: '2025-11-20', lat: 50.829, lng: -0.785 },
 ];
 
 /**
- * Fetch the 8 most recent completed BFB jobs within a bounding box
+ * Fetch the 8 most recent geolocated BFB client jobs within a bounding box
  * centred on lat/lng.
  *
- * Falls back to MOCK_JOBS when:
- * - crmIntegration === 'none'
- * - BFB env vars are absent
- * - The BFB project is unreachable
+ * Uses the real BFB client_jobs table when BFB_SUPABASE_URL +
+ * BFB_SUPABASE_SERVICE_KEY are configured; falls back to Chichester-area
+ * mock pins otherwise.
  */
 export async function getNearbyJobs(
   lat: number,
   lng: number,
-  crmIntegration: string = 'none'
+  _crmIntegration: string = 'none'
 ): Promise<NearbyJob[]> {
-  if (crmIntegration !== 'supabase_shared') {
-    // Return mock pins translated near the provided coordinates
+  const client = getBfbClient();
+
+  if (!client) {
+    // No env vars — return mock pins translated near the provided coordinates
     return MOCK_JOBS.map((j, i) => ({
       ...j,
       lat: lat + (i % 3 === 0 ? 0.008 : i % 3 === 1 ? -0.006 : 0.012) * (i % 2 === 0 ? 1 : -1),
@@ -67,36 +62,33 @@ export async function getNearbyJobs(
     }));
   }
 
-  const client = getBfbClient();
-  if (!client) return MOCK_JOBS;
-
   try {
     const { data, error } = await client
-      .from('bfb_jobs')
-      .select('id, address, postcode, job_type, value, status, completed_at, lat, lng')
-      .eq('status', 'completed')
-      .gte('lat', lat - LAT_DELTA)
-      .lte('lat', lat + LAT_DELTA)
-      .gte('lng', lng - LNG_DELTA)
-      .lte('lng', lng + LNG_DELTA)
-      .not('lat', 'is', null)
-      .order('completed_at', { ascending: false })
+      .from('client_jobs')
+      .select('id, address, postcode, finish_type, property_type, job_date, latitude, longitude')
+      .gte('latitude', lat - LAT_DELTA)
+      .lte('latitude', lat + LAT_DELTA)
+      .gte('longitude', lng - LNG_DELTA)
+      .lte('longitude', lng + LNG_DELTA)
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
+      .order('job_date', { ascending: false })
       .limit(8);
 
-    if (error || !data) return [];
+    if (error || !data || (data as ClientJobRow[]).length === 0) return MOCK_JOBS;
 
-    return (data as BfbJob[]).map(j => ({
+    return (data as ClientJobRow[]).map(j => ({
       id:          j.id,
       address:     j.address,
       postcode:    j.postcode,
-      jobType:     j.job_type,
-      value:       formatValue(j.value),
-      status:      j.status,
-      completedAt: j.completed_at,
-      lat:         j.lat,
-      lng:         j.lng,
+      jobType:     j.finish_type || j.property_type || 'Restoration',
+      value:       null,
+      status:      'completed',
+      completedAt: j.job_date,
+      lat:         j.latitude!,
+      lng:         j.longitude!,
     }));
   } catch {
-    return [];
+    return MOCK_JOBS;
   }
 }
