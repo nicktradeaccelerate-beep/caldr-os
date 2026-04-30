@@ -53,6 +53,9 @@ export default function TaskDetailPage() {
   const [starting, setStarting] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [narrative, setNarrative] = useState('');
+  const [selfChecking, setSelfChecking] = useState(false);
+  const [selfCheckResult, setSelfCheckResult] = useState<{ assessment: string; readiness: number } | null>(null);
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -84,6 +87,29 @@ export default function TaskDetailPage() {
   }, [supabase, params.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function runSelfCheck() {
+    if (!task || !userId || !narrative.trim()) return;
+    setSelfChecking(true);
+    setSelfCheckResult(null);
+    try {
+      const res = await fetch('/api/guide/self-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskTitle: task.title ?? task.text,
+          successCriteria: task.success_criteria ?? [],
+          narrative: narrative.trim(),
+          userId,
+        }),
+      });
+      const data = await res.json() as { assessment?: string; readiness?: number; error?: string };
+      setSelfCheckResult({ assessment: data.assessment ?? data.error ?? 'Check failed.', readiness: data.readiness ?? 0 });
+    } catch {
+      setSelfCheckResult({ assessment: 'Connection error — try again.', readiness: 0 });
+    }
+    setSelfChecking(false);
+  }
 
   async function startTask() {
     if (!task || !userId) return;
@@ -147,9 +173,30 @@ export default function TaskDetailPage() {
 
   const title = task.title ?? task.text;
   const statusStyle = STATUS_COLORS[task.kanban_status] ?? STATUS_COLORS.backlog;
+  const isBfb = task.projects?.slug === 'bfb';
+
+  // BFB palette
+  const bfb = {
+    bg: '#F5F0E8',
+    card: '#FDFAF4',
+    border: '#D4C5A9',
+    heading: "'Cormorant Garamond', Georgia, serif",
+    gold: '#9A7B3A',
+    obsidian: '#1A1510',
+    muted: '#6B5E4A',
+  };
+
+  const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    background: isBfb ? bfb.card : 'white',
+    borderRadius: 12,
+    border: `1px solid ${isBfb ? bfb.border : '#E2E8F0'}`,
+    padding: '16px 20px',
+    marginBottom: 16,
+    ...extra,
+  });
 
   return (
-    <div style={{ padding: 28, maxWidth: 720 }}>
+    <div style={{ padding: 28, maxWidth: 720, background: isBfb ? bfb.bg : 'transparent', minHeight: '100%' }}>
       {/* Breadcrumb */}
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
         <Link href="/dashboard" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}>
@@ -166,7 +213,7 @@ export default function TaskDetailPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.4px', margin: 0, flex: 1 }}>
+          <h1 style={{ fontSize: 22, fontWeight: isBfb ? 600 : 700, color: isBfb ? bfb.obsidian : '#0F172A', letterSpacing: isBfb ? '-0.2px' : '-0.4px', margin: 0, flex: 1, fontFamily: isBfb ? bfb.heading : 'inherit' }}>
             {title}
           </h1>
           <span style={{
@@ -254,24 +301,74 @@ export default function TaskDetailPage() {
         )}
 
         {task.kanban_status === 'doing' && (
-          <>
-            <button
-              onClick={() => setShowSubmit(true)}
-              style={{
-                padding: '10px 20px', background: '#1B4332', color: 'white',
-                border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              Submit for review
-            </button>
-            <Link href="/guide" style={{
-              padding: '10px 18px', background: 'white', color: '#1B4332',
-              border: '1px solid #1B4332', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              textDecoration: 'none',
-            }}>
-              Ask the Guide
-            </Link>
-          </>
+          <div style={{ width: '100%' }}>
+            {/* Self-check panel */}
+            <div style={cardStyle({ marginBottom: 16 })}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: isBfb ? bfb.gold : '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, fontFamily: isBfb ? bfb.heading : 'inherit' }}>
+                Self-check before submitting
+              </div>
+              <p style={{ fontSize: 12, color: isBfb ? bfb.muted : '#64748B', marginTop: 0, marginBottom: 12, lineHeight: 1.6 }}>
+                Describe what you built or completed. The Guide will score it against the success criteria before you submit.
+              </p>
+              <textarea
+                value={narrative}
+                onChange={e => setNarrative(e.target.value)}
+                placeholder="Describe what you did and how it meets the criteria…"
+                rows={4}
+                style={{
+                  width: '100%', padding: '10px 12px', fontSize: 13,
+                  border: `1px solid ${isBfb ? bfb.border : '#E2E8F0'}`,
+                  borderRadius: 8, resize: 'vertical', fontFamily: 'inherit',
+                  background: isBfb ? bfb.bg : '#F8FAFC', color: isBfb ? bfb.obsidian : '#0F172A',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button
+                  onClick={runSelfCheck}
+                  disabled={!narrative.trim() || selfChecking}
+                  style={{
+                    padding: '8px 16px', background: isBfb ? bfb.gold : '#1B4332', color: 'white',
+                    border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                    cursor: !narrative.trim() || selfChecking ? 'not-allowed' : 'pointer',
+                    opacity: !narrative.trim() || selfChecking ? 0.6 : 1,
+                  }}
+                >
+                  {selfChecking ? 'Checking…' : 'Run self-check'}
+                </button>
+                {selfCheckResult && (
+                  <span style={{ fontSize: 11, color: selfCheckResult.readiness >= 4 ? '#16A34A' : selfCheckResult.readiness >= 3 ? '#D97706' : '#DC2626', fontWeight: 600 }}>
+                    Readiness: {selfCheckResult.readiness}/5
+                  </span>
+                )}
+              </div>
+
+              {/* Results */}
+              {selfCheckResult && (
+                <div style={{ marginTop: 12, padding: '12px 14px', background: isBfb ? bfb.bg : '#F8FAFC', borderRadius: 8, border: `1px solid ${isBfb ? bfb.border : '#E2E8F0'}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: isBfb ? bfb.gold : '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                    Guide assessment
+                  </div>
+                  <p style={{ fontSize: 12, color: isBfb ? bfb.obsidian : '#374151', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {selfCheckResult.assessment}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Submit button — only shown after self-check */}
+            {selfCheckResult && (
+              <button
+                onClick={() => setShowSubmit(true)}
+                style={{
+                  padding: '10px 20px', background: isBfb ? bfb.obsidian : '#1B4332', color: isBfb ? bfb.bg : 'white',
+                  border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Submit for review →
+              </button>
+            )}
+          </div>
         )}
 
         {task.kanban_status === 'in_review' && (

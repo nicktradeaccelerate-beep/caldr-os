@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import GuidePanel from '@/components/apprentice/GuidePanel';
 
 interface ApprenticeUser {
   id: string;
@@ -223,6 +224,9 @@ export default function ApprenticeLayout({ children }: { children: React.ReactNo
       <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
         {children}
       </div>
+
+      {/* Guide panel — docked right, passes task ID when on task detail page */}
+      <GuidePanel pathTaskId={pathname.match(/^\/apprentice-tasks\/([^/]+)/)?.[1]} />
     </div>
   );
 }

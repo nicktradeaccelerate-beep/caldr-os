@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
@@ -59,47 +59,51 @@ function DifficultyDots({ level }: { level: number }) {
   );
 }
 
-function TaskCard({ task }: { task: PlatformTask }) {
+function TaskCard({ task, onDragStart }: { task: PlatformTask; onDragStart: (id: string) => void }) {
   const title = task.title ?? task.text;
   const projectName = task.projects?.name;
   return (
-    <Link href={`/apprentice-tasks/${task.id}`} style={{ textDecoration: 'none' }}>
-      <div style={{
-        background: 'white',
-        border: '1px solid #E2E8F0',
-        borderRadius: 10,
-        padding: '12px 14px',
-        marginBottom: 8,
-        cursor: 'pointer',
-        transition: 'box-shadow 0.15s, border-color 0.15s',
-      }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-          (e.currentTarget as HTMLDivElement).style.borderColor = '#CBD5E1';
+    <div
+      draggable
+      onDragStart={() => onDragStart(task.id)}
+      style={{ marginBottom: 8, cursor: 'grab' }}
+    >
+      <Link href={`/apprentice-tasks/${task.id}`} style={{ textDecoration: 'none' }} onClick={e => e.stopPropagation()}>
+        <div style={{
+          background: 'white',
+          border: '1px solid #E2E8F0',
+          borderRadius: 10,
+          padding: '12px 14px',
+          transition: 'box-shadow 0.15s, border-color 0.15s',
         }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-          (e.currentTarget as HTMLDivElement).style.borderColor = '#E2E8F0';
-        }}
-      >
-        {projectName && (
-          <div style={{
-            fontSize: 10, fontWeight: 700, color: '#1B4332',
-            background: '#DCFCE7', padding: '2px 7px', borderRadius: 4,
-            display: 'inline-block', marginBottom: 6, letterSpacing: '0.04em',
-          }}>
-            {projectName}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+            (e.currentTarget as HTMLDivElement).style.borderColor = '#CBD5E1';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+            (e.currentTarget as HTMLDivElement).style.borderColor = '#E2E8F0';
+          }}
+        >
+          {projectName && (
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: '#1B4332',
+              background: '#DCFCE7', padding: '2px 7px', borderRadius: 4,
+              display: 'inline-block', marginBottom: 6, letterSpacing: '0.04em',
+            }}>
+              {projectName}
+            </div>
+          )}
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', marginBottom: 8, lineHeight: 1.35 }}>
+            {title}
           </div>
-        )}
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', marginBottom: 8, lineHeight: 1.35 }}>
-          {title}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <DueBadge due={task.due_date} />
+            <DifficultyDots level={task.difficulty ?? 2} />
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <DueBadge due={task.due_date} />
-          <DifficultyDots level={task.difficulty ?? 2} />
-        </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
@@ -145,6 +149,8 @@ export default function ApprenticeDashboard() {
   const [projects, setProjects] = useState<ProjectAccess[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -178,6 +184,27 @@ export default function ApprenticeDashboard() {
   }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handleDrop(targetCol: string) {
+    if (!dragId || !targetCol) return;
+    const task = tasks.find(t => t.id === dragId);
+    if (!task || task.kanban_status === targetCol) { setDragId(null); setDragOver(null); return; }
+
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === dragId ? { ...t, kanban_status: targetCol } : t));
+    setDragId(null);
+    setDragOver(null);
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ kanban_status: targetCol })
+      .eq('id', dragId);
+
+    if (error) {
+      // Revert on failure
+      setTasks(prev => prev.map(t => t.id === dragId ? { ...t, kanban_status: task.kanban_status } : t));
+    }
+  }
 
   const tasksByColumn = COLUMNS.reduce((acc, col) => {
     acc[col.key] = tasks.filter(t => t.kanban_status === col.key);
@@ -226,8 +253,15 @@ export default function ApprenticeDashboard() {
           {COLUMNS.map(col => {
             const colTasks = tasksByColumn[col.key] ?? [];
             const isDoingOverloaded = col.key === 'doing' && colTasks.length >= 3;
+            const isDragTarget = dragOver === col.key && dragId !== null;
             return (
-              <div key={col.key} style={{ minWidth: 240, width: 240, flexShrink: 0 }}>
+              <div
+                key={col.key}
+                style={{ minWidth: 220, width: 220, flexShrink: 0 }}
+                onDragOver={e => { e.preventDefault(); setDragOver(col.key); }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={() => handleDrop(col.key)}
+              >
                 {/* Column header */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -249,16 +283,22 @@ export default function ApprenticeDashboard() {
                   )}
                 </div>
 
-                {/* Tasks */}
-                {loading ? (
-                  <>
-                    {col.key === 'backlog' && <><SkeletonCard /><SkeletonCard /></>}
-                  </>
-                ) : colTasks.length === 0 ? (
-                  <EmptyColumn colKey={col.key} />
-                ) : (
-                  colTasks.map(task => <TaskCard key={task.id} task={task} />)
-                )}
+                {/* Drop zone */}
+                <div style={{
+                  minHeight: 80, borderRadius: 10,
+                  border: isDragTarget ? '2px dashed #1B4332' : '2px solid transparent',
+                  background: isDragTarget ? '#F0FDF4' : 'transparent',
+                  transition: 'all 0.15s',
+                  padding: isDragTarget ? 4 : 0,
+                }}>
+                  {loading ? (
+                    <>{col.key === 'backlog' && <><SkeletonCard /><SkeletonCard /></>}</>
+                  ) : colTasks.length === 0 ? (
+                    <EmptyColumn colKey={col.key} />
+                  ) : (
+                    colTasks.map(task => <TaskCard key={task.id} task={task} onDragStart={setDragId} />)
+                  )}
+                </div>
               </div>
             );
           })}
