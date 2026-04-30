@@ -213,19 +213,46 @@ export default function ApprenticeDashboard() {
 
   const hasProjects = projects.length > 0;
 
+  const activeTasks = tasks.filter(t => t.kanban_status === 'doing').length;
+  const backlogTasks = tasks.filter(t => t.kanban_status === 'backlog').length;
+  const inReviewTasks = tasks.filter(t => t.kanban_status === 'in_review').length;
+  const approvedTasks = tasks.filter(t => t.kanban_status === 'approved').length;
+
   return (
     <div style={{ padding: 28 }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.4px', marginBottom: 4 }}>
           Your workspace
         </div>
         <div style={{ fontSize: 13, color: '#64748B' }}>
           {hasProjects
-            ? `${tasks.filter(t => t.kanban_status === 'doing').length} in progress · ${tasks.filter(t => t.kanban_status === 'backlog').length} in backlog`
+            ? `${projects[0]?.projects?.name ?? 'Project'} · drag cards between columns`
             : 'Waiting for project access from Nick.'}
         </div>
       </div>
+
+      {/* Stats row */}
+      {hasProjects && !loading && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+          {[
+            { label: 'In progress', value: activeTasks, color: activeTasks > 0 ? '#1D4ED8' : undefined, bg: activeTasks > 0 ? '#EFF6FF' : undefined },
+            { label: 'Backlog',     value: backlogTasks },
+            { label: 'In review',   value: inReviewTasks, color: inReviewTasks > 0 ? '#D97706' : undefined, bg: inReviewTasks > 0 ? '#FEF3C7' : undefined },
+            { label: 'Approved',    value: approvedTasks, color: approvedTasks > 0 ? '#16A34A' : undefined, bg: approvedTasks > 0 ? '#DCFCE7' : undefined },
+          ].map(s => (
+            <div key={s.label} style={{
+              padding: '10px 16px', borderRadius: 10,
+              background: s.bg ?? '#F8FAFC',
+              border: `1px solid ${s.color ? `${s.color}30` : '#E2E8F0'}`,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: s.color ?? '#64748B', letterSpacing: '-0.3px' }}>{s.value}</span>
+              <span style={{ fontSize: 11, color: s.color ?? '#94A3B8', fontWeight: 500 }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!hasProjects && !loading ? (
         <div style={{
@@ -254,10 +281,18 @@ export default function ApprenticeDashboard() {
             const colTasks = tasksByColumn[col.key] ?? [];
             const isDoingOverloaded = col.key === 'doing' && colTasks.length >= 3;
             const isDragTarget = dragOver === col.key && dragId !== null;
+
+            const headerAccent: Record<string, string> = {
+              doing: '#1D4ED8',
+              in_review: '#D97706',
+              approved: '#16A34A',
+            };
+            const accent = headerAccent[col.key] ?? '#94A3B8';
+
             return (
               <div
                 key={col.key}
-                style={{ minWidth: 220, width: 220, flexShrink: 0 }}
+                style={{ minWidth: 240, width: 240, flexShrink: 0 }}
                 onDragOver={e => { e.preventDefault(); setDragOver(col.key); }}
                 onDragLeave={() => setDragOver(null)}
                 onDrop={() => handleDrop(col.key)}
@@ -265,21 +300,23 @@ export default function ApprenticeDashboard() {
                 {/* Column header */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  marginBottom: 12, padding: '0 2px',
+                  marginBottom: 10, padding: '0 2px',
                 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#475569', letterSpacing: '0.02em' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                     {col.label}
                   </span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600,
-                    color: isDoingOverloaded ? '#D97706' : '#94A3B8',
-                    background: isDoingOverloaded ? '#FEF3C7' : '#F1F5F9',
-                    padding: '1px 7px', borderRadius: 10,
-                  }}>
-                    {colTasks.length}
-                  </span>
+                  {colTasks.length > 0 && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 700,
+                      color: isDoingOverloaded ? '#D97706' : accent,
+                      background: isDoingOverloaded ? '#FEF3C7' : `${accent}15`,
+                      padding: '1px 7px', borderRadius: 10,
+                    }}>
+                      {colTasks.length}
+                    </span>
+                  )}
                   {isDoingOverloaded && (
-                    <span style={{ fontSize: 10, color: '#D97706' }}>Focus up</span>
+                    <span style={{ fontSize: 10, color: '#D97706', fontWeight: 600 }}>focus</span>
                   )}
                 </div>
 

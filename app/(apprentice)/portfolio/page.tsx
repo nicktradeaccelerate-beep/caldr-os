@@ -64,23 +64,54 @@ export default function PortfolioPage() {
     );
   }
 
+  const changesNeeded = submissions.filter(s => s.status === 'changes_requested').length;
+
   return (
     <div style={{ padding: 28, maxWidth: 720 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.4px', margin: 0, marginBottom: 4 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.4px', margin: '0 0 4px' }}>
           Portfolio
         </h1>
-        <div style={{ fontSize: 13, color: '#64748B' }}>
-          {approved.length} approved · {inProgress.length} in progress
-        </div>
+        <div style={{ fontSize: 13, color: '#64748B' }}>Your submission history</div>
       </div>
+
+      {/* Stats row */}
+      {submissions.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+          <div style={{ padding: '10px 16px', borderRadius: 10, background: '#DCFCE7', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#16A34A', letterSpacing: '-0.3px' }}>{approved.length}</span>
+            <span style={{ fontSize: 11, color: '#16A34A', fontWeight: 500 }}>Approved</span>
+          </div>
+          {inProgress.length > 0 && (
+            <div style={{ padding: '10px 16px', borderRadius: 10, background: '#FEF3C7', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#D97706', letterSpacing: '-0.3px' }}>{inProgress.length}</span>
+              <span style={{ fontSize: 11, color: '#D97706', fontWeight: 500 }}>In review</span>
+            </div>
+          )}
+          {changesNeeded > 0 && (
+            <div style={{ padding: '10px 16px', borderRadius: 10, background: '#FEE2E2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#DC2626', letterSpacing: '-0.3px' }}>{changesNeeded}</span>
+              <span style={{ fontSize: 11, color: '#DC2626', fontWeight: 500 }}>Changes needed</span>
+            </div>
+          )}
+          <div style={{ padding: '10px 16px', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#64748B', letterSpacing: '-0.3px' }}>{submissions.length}</span>
+            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>Total</span>
+          </div>
+        </div>
+      )}
 
       {submissions.length === 0 ? (
         <div style={{
           background: 'white', borderRadius: 14, border: '1px solid #E2E8F0',
-          padding: '40px 32px', textAlign: 'center',
+          padding: '48px 32px', textAlign: 'center',
         }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🏅</div>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#94A3B8' }}>
+              <circle cx="12" cy="8" r="5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <path d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>
             No submissions yet
           </div>
@@ -127,7 +158,9 @@ export default function PortfolioPage() {
                   }}>
                     {statusInfo.label}
                   </span>
-                  <span style={{ color: '#CBD5E1', fontSize: 14 }}>{isOpen ? '▲' : '▼'}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#CBD5E1', transition: 'transform 0.15s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </button>
 
                 {isOpen && (
@@ -164,9 +197,6 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      <div style={{ marginTop: 24, padding: '14px 18px', background: '#F8FAFC', borderRadius: 10, border: '1px dashed #CBD5E1', fontSize: 12, color: '#94A3B8', textAlign: 'center' }}>
-        Portfolio sharing — coming in V2
-      </div>
     </div>
   );
 }

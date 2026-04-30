@@ -15,14 +15,40 @@ interface UsageRow {
   created_at: string;
 }
 
-interface UserRow {
-  id: string;
-  name: string;
+interface UserRow { id: string; name: string; }
+interface BudgetRow { user_id: string; monthly_budget_gbp: number; }
+
+function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
+  return (
+    <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 20px', flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: accent ?? 'var(--ink)', letterSpacing: '-0.5px', lineHeight: 1 }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>{sub}</div>}
+    </div>
+  );
 }
 
-interface BudgetRow {
-  user_id: string;
-  monthly_budget_gbp: number;
+function BudgetBar({ used, budget, name }: { used: number; budget: number; name: string }) {
+  const pct = budget > 0 ? Math.min(Math.round((used / budget) * 100), 100) : 0;
+  const color = pct >= 95 ? '#DC2626' : pct >= 80 ? '#D97706' : 'var(--accent)';
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+        <span style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>{name}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color }}>
+          £{used.toFixed(3)} <span style={{ color: 'var(--ink-3)', fontWeight: 400 }}>/ £{budget.toFixed(0)}</span>
+        </span>
+      </div>
+      <div style={{ height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s' }} />
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 3 }}>{pct}% of monthly budget</div>
+    </div>
+  );
 }
 
 export default function CostsPage() {
@@ -59,118 +85,157 @@ export default function CostsPage() {
   useEffect(() => { load(); }, [load]);
 
   const totalCost = usage.reduce((a, r) => a + Number(r.api_cost_gbp), 0);
+  const avgCost = usage.length > 0 ? totalCost / usage.length : 0;
 
-  // By user
   const byUser: Record<string, number> = {};
   for (const r of usage) byUser[r.user_id] = (byUser[r.user_id] ?? 0) + Number(r.api_cost_gbp);
 
-  // By feature
   const byFeature: Record<string, number> = {};
   for (const r of usage) byFeature[r.feature] = (byFeature[r.feature] ?? 0) + Number(r.api_cost_gbp);
 
-  // By model
   const byModel: Record<string, number> = {};
   for (const r of usage) byModel[r.model] = (byModel[r.model] ?? 0) + Number(r.api_cost_gbp);
 
+  const topFeature = Object.entries(byFeature).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ maxWidth: 960, margin: '0 auto' }}>
+      {/* Breadcrumb + heading */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Link href="/platform" style={{ fontSize: 13, color: 'var(--ink-2)', textDecoration: 'none' }}>Platform</Link>
-          <span style={{ color: 'var(--ink-3)' }}>/</span>
-          <span style={{ fontSize: 13, color: 'var(--ink)' }}>Costs</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <Link href="/platform" style={{ fontSize: 12, color: 'var(--ink-3)', textDecoration: 'none' }}>Platform</Link>
+          <span style={{ color: 'var(--border)' }}>/</span>
+          <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Costs</span>
         </div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>API costs</h1>
-        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>This calendar month</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 2px', letterSpacing: '-0.3px' }}>API costs</h1>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+          {new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+        </div>
       </div>
 
       {loading ? (
         <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Loading…</div>
       ) : (
-        <div>
-          {/* Total */}
-          <div style={{
-            background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)',
-            padding: '18px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20,
-          }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total spend</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.5px' }}>£{totalCost.toFixed(4)}</div>
-            </div>
-            <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{usage.length} API calls this month</div>
+        <>
+          {/* Stat row */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            <StatCard label="Total spend" value={`£${totalCost.toFixed(4)}`} sub="this calendar month" />
+            <StatCard label="API calls" value={usage.length} sub="across all features" />
+            <StatCard label="Avg per call" value={`£${avgCost.toFixed(5)}`} sub="mean cost" />
+            <StatCard label="Top feature" value={topFeature} sub="by spend" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-            {/* By user */}
-            <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 18px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>By user</div>
-              {Object.entries(byUser).sort((a, b) => b[1] - a[1]).map(([uid, cost]) => {
-                const budget = budgets[uid] ?? 50;
-                const pct = Math.round((cost / budget) * 100);
-                return (
-                  <div key={uid} style={{ marginBottom: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <span style={{ fontSize: 12, color: 'var(--ink)' }}>{users[uid] ?? uid.slice(0, 8)}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: pct >= 80 ? '#DC2626' : 'var(--accent)' }}>
-                        £{cost.toFixed(3)} ({pct}%)
-                      </span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            {/* By user with budget bars */}
+            <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>Budget utilisation</span>
+              </div>
+              <div style={{ padding: '16px 18px' }}>
+                {Object.entries(byUser).sort((a, b) => b[1] - a[1]).length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No usage this month.</div>
+                ) : (
+                  Object.entries(byUser).sort((a, b) => b[1] - a[1]).map(([uid, cost]) => (
+                    <BudgetBar
+                      key={uid}
+                      name={users[uid] ?? uid.slice(0, 8)}
+                      used={cost}
+                      budget={budgets[uid] ?? 50}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* By feature + model */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>By feature</span>
+                </div>
+                <div style={{ padding: '12px 18px' }}>
+                  {Object.entries(byFeature).sort((a, b) => b[1] - a[1]).map(([feature, cost]) => {
+                    const pct = totalCost > 0 ? (cost / totalCost) * 100 : 0;
+                    return (
+                      <div key={feature} style={{ marginBottom: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: 12, color: 'var(--ink)' }}>{feature}</span>
+                          <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'monospace' }}>£{cost.toFixed(4)}</span>
+                        </div>
+                        <div style={{ height: 3, background: 'var(--border)', borderRadius: 2 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent-mid)', borderRadius: 2 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Object.keys(byFeature).length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No usage.</div>}
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>By model</span>
+                </div>
+                <div style={{ padding: '12px 18px' }}>
+                  {Object.entries(byModel).sort((a, b) => b[1] - a[1]).map(([model, cost]) => (
+                    <div key={model} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--ink)' }}>{model.replace('claude-', '').replace(/-\d{8}$/, '')}</span>
+                      <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'monospace' }}>£{cost.toFixed(4)}</span>
                     </div>
-                    <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }}>
-                      <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: pct >= 80 ? '#DC2626' : 'var(--accent)', borderRadius: 2 }} />
-                    </div>
-                  </div>
-                );
-              })}
-              {Object.keys(byUser).length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No usage.</div>}
-            </div>
-
-            {/* By feature */}
-            <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 18px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>By feature</div>
-              {Object.entries(byFeature).sort((a, b) => b[1] - a[1]).map(([feature, cost]) => (
-                <div key={feature} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: 'var(--ink)' }}>{feature}</span>
-                  <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>£{cost.toFixed(4)}</span>
+                  ))}
+                  {Object.keys(byModel).length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No usage.</div>}
                 </div>
-              ))}
-              {Object.keys(byFeature).length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No usage.</div>}
-            </div>
-
-            {/* By model */}
-            <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 18px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>By model</div>
-              {Object.entries(byModel).sort((a, b) => b[1] - a[1]).map(([model, cost]) => (
-                <div key={model} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: 'var(--ink)' }}>{model.replace('claude-', '').replace('-20250514', '')}</span>
-                  <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>£{cost.toFixed(4)}</span>
-                </div>
-              ))}
-              {Object.keys(byModel).length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No usage.</div>}
+              </div>
             </div>
           </div>
 
-          {/* Recent calls */}
-          <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 18px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>Recent API calls</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 11 }}>
-              {usage.slice(0, 20).map((r, i) => (
-                <div key={i} style={{
-                  display: 'flex', gap: 12, alignItems: 'center',
-                  padding: '5px 0', borderBottom: '1px solid var(--border)',
-                  color: 'var(--ink-2)',
-                }}>
-                  <span style={{ width: 90, color: 'var(--ink-3)' }}>
-                    {new Date(r.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span style={{ width: 140 }}>{users[r.user_id] ?? r.user_id.slice(0, 8)}</span>
-                  <span style={{ flex: 1 }}>{r.feature}</span>
-                  <span style={{ width: 70, textAlign: 'right', color: 'var(--ink)' }}>£{Number(r.api_cost_gbp).toFixed(5)}</span>
-                </div>
-              ))}
-              {usage.length === 0 && <div style={{ color: 'var(--ink-3)' }}>No API calls this month.</div>}
+          {/* Recent calls log */}
+          <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>Recent calls</span>
+              <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 8 }}>last {Math.min(usage.length, 20)} of {usage.length}</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'DM Mono, monospace' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Time', 'User', 'Feature', 'Model', 'Cost'].map(h => (
+                      <th key={h} style={{ padding: '8px 18px', textAlign: h === 'Cost' ? 'right' : 'left', color: 'var(--ink-3)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: 10 }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {usage.slice(0, 20).map((r, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 18px', color: 'var(--ink-3)' }}>
+                        {new Date(r.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td style={{ padding: '8px 18px', color: 'var(--ink-2)' }}>
+                        {users[r.user_id] ?? r.user_id.slice(0, 8)}
+                      </td>
+                      <td style={{ padding: '8px 18px', color: 'var(--ink)' }}>{r.feature}</td>
+                      <td style={{ padding: '8px 18px', color: 'var(--ink-2)' }}>
+                        {r.model.replace('claude-', '').replace(/-\d{8}$/, '')}
+                      </td>
+                      <td style={{ padding: '8px 18px', textAlign: 'right', color: 'var(--ink)', fontWeight: 600 }}>
+                        £{Number(r.api_cost_gbp).toFixed(5)}
+                      </td>
+                    </tr>
+                  ))}
+                  {usage.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '16px 18px', color: 'var(--ink-3)', textAlign: 'center' }}>
+                        No API calls this month.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
