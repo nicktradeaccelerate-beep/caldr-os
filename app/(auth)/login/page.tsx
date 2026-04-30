@@ -8,8 +8,8 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const supabase = createClient();
@@ -19,17 +19,14 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
-      setSent(true);
-      setLoading(false);
+      router.push('/');
+      router.refresh();
     }
   }
 
@@ -76,26 +73,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {sent ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '24px 0',
-            color: 'var(--ink-2)',
-            fontSize: 14,
-            lineHeight: 1.6,
-          }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📬</div>
-            <strong style={{ color: 'var(--ink)', display: 'block', marginBottom: 8 }}>
-              Check your email
-            </strong>
-            We sent a magic link to <strong>{email}</strong>.<br />
-            Click it to sign in.
-          </div>
-        ) : (
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', display: 'block', marginBottom: 6 }}>
-                Work email
+                Email
               </label>
               <input
                 type="email"
@@ -113,6 +94,34 @@ export default function LoginPage() {
                   background: 'var(--white)',
                   outline: 'none',
                   transition: 'border-color 0.15s',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
+                onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', display: 'block', marginBottom: 6 }}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 14,
+                  color: 'var(--ink)',
+                  background: 'var(--white)',
+                  outline: 'none',
+                  transition: 'border-color 0.15s',
+                  boxSizing: 'border-box',
                 }}
                 onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
                 onBlur={e => (e.target.style.borderColor = 'var(--border)')}
@@ -127,7 +136,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || !email}
+              disabled={loading || !email || !password}
               style={{
                 padding: '11px 0',
                 background: loading ? 'var(--accent-mid)' : 'var(--accent)',
@@ -141,10 +150,9 @@ export default function LoginPage() {
                 marginTop: 4,
               }}
             >
-              {loading ? 'Sending…' : 'Send magic link →'}
+              {loading ? 'Signing in…' : 'Sign in →'}
             </button>
           </form>
-        )}
 
         <div style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--ink-3)' }}>
           Access is by invitation only
