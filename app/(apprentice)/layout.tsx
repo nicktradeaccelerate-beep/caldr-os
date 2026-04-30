@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import GuidePanel from '@/components/apprentice/GuidePanel';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface ApprenticeUser {
   id: string;
@@ -44,6 +45,7 @@ function NavIcon({ name }: { name: string }) {
 export default function ApprenticeLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [user, setUser] = useState<ApprenticeUser | null>(null);
   const [budget, setBudget] = useState<BudgetStatus | null>(null);
   const supabase = createClient();
@@ -98,14 +100,14 @@ export default function ApprenticeLayout({ children }: { children: React.ReactNo
     : '#16A34A';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh', background: '#F8FAFC', fontFamily: 'DM Sans, system-ui, sans-serif' }}>
-      {/* Sidebar */}
+    <div style={{ display: 'flex', minHeight: '100dvh', background: '#F8FAFC', fontFamily: 'DM Sans, system-ui, sans-serif', flexDirection: isMobile ? 'column' : 'row' }}>
+      {/* Sidebar — desktop only */}
       <aside style={{
         width: 240,
         flexShrink: 0,
         background: 'white',
         borderRight: '1px solid #E2E8F0',
-        display: 'flex',
+        display: isMobile ? 'none' : 'flex',
         flexDirection: 'column',
         position: 'sticky',
         top: 0,
@@ -221,13 +223,51 @@ export default function ApprenticeLayout({ children }: { children: React.ReactNo
       </aside>
 
       {/* Main */}
-      <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+      <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', paddingBottom: isMobile ? 64 : 0 }}>
         {children}
       </div>
 
-      {/* Guide panel — hidden on task detail pages (ThreeColumnWorkSurface renders it there) */}
-      {!pathname.startsWith('/apprentice-tasks/') && (
+      {/* Guide panel — desktop only, hidden on task detail pages */}
+      {!isMobile && !pathname.startsWith('/apprentice-tasks/') && (
         <GuidePanel pathTaskId={undefined} />
+      )}
+
+      {/* Bottom tab bar — mobile only */}
+      {isMobile && (
+        <nav style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+          background: 'white', borderTop: '1px solid #E2E8F0',
+          display: 'flex', alignItems: 'stretch',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+        }}>
+          {NAV_ITEMS.map(item => {
+            const active = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', padding: '10px 4px 8px',
+                  color: active ? '#1B4332' : '#94A3B8',
+                  textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
+                  gap: 3,
+                }}
+              >
+                <NavIcon name={item.icon} />
+                {item.label}
+              </Link>
+            );
+          })}
+          {/* Budget indicator dot */}
+          {budget && budget.pct >= 80 && (
+            <div style={{
+              position: 'absolute', top: 8, right: 12, width: 6, height: 6,
+              borderRadius: '50%', background: budget.pct >= 95 ? '#DC2626' : '#D97706',
+            }} />
+          )}
+        </nav>
       )}
     </div>
   );

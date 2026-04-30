@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface Props {
   leftRail: React.ReactNode;
@@ -28,8 +29,10 @@ export default function ThreeColumnWorkSurface({
   leftBg = 'white',
   centreBg = '#F8FAFC',
 }: Props) {
+  const isMobile = useIsMobile();
   const [leftWidth, setLeftWidth] = useState(leftDefaultWidth);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<'centre' | 'left' | 'right'>('centre');
   const dragging = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
@@ -75,6 +78,54 @@ export default function ThreeColumnWorkSurface({
     try { localStorage.setItem(`${storageKey}:rc`, next ? '1' : '0'); } catch {}
   }
 
+  // ─── Mobile layout ───────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: mobilePanel === 'left' ? leftBg : centreBg }}>
+        {topToolbar && (
+          <div style={{ flexShrink: 0, borderBottom: '1px solid #E2E8F0', background: 'white' }}>
+            {topToolbar}
+          </div>
+        )}
+        {/* Panel toggle tab bar */}
+        <div style={{
+          display: 'flex', borderBottom: '1px solid #E2E8F0', background: 'white', flexShrink: 0,
+        }}>
+          {[
+            { key: 'left' as const, label: 'Brief' },
+            { key: 'centre' as const, label: 'Work' },
+            { key: 'right' as const, label: 'Guide' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setMobilePanel(tab.key)}
+              style={{
+                flex: 1, padding: '9px 0', background: 'none', border: 'none',
+                borderBottom: `2px solid ${mobilePanel === tab.key ? '#1B4332' : 'transparent'}`,
+                fontSize: 12, fontWeight: mobilePanel === tab.key ? 700 : 400,
+                color: mobilePanel === tab.key ? '#1B4332' : '#94A3B8',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* Active panel */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {mobilePanel === 'left' && leftRail}
+          {mobilePanel === 'centre' && centre}
+          {mobilePanel === 'right' && (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {rightPanel}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Desktop layout ───────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       {topToolbar && (

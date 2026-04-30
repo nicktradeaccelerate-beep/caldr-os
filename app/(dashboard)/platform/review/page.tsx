@@ -5,9 +5,11 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import DiffViewer from '@/components/shared/DiffViewer';
 
 interface Submission {
   id: string;
+  task_id: string | null;
   status: string;
   narrative: string | null;
   submitted_at: string | null;
@@ -20,18 +22,28 @@ interface Submission {
   projects: { name: string } | null;
 }
 
+interface TaskAction {
+  id: string;
+  action_type: string;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export default function ReviewQueuePage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selected, setSelected] = useState<Submission | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviewNotes, setReviewNotes] = useState('');
   const [actioning, setActioning] = useState(false);
+  const [taskActions, setTaskActions] = useState<TaskAction[]>([]);
+  const [showDiff, setShowDiff] = useState(false);
   const supabase = createClient();
 
   const load = useCallback(async () => {
     const { data } = await supabase
       .from('submissions')
-      .select('id, status, narrative, submitted_at, self_check_results, diff_summary, video_link, review_notes, users(name, email), tasks(title, text, success_criteria), projects(name)')
+      .select('id, task_id, status, narrative, submitted_at, self_check_results, diff_summary, video_link, review_notes, users(name, email), tasks(title, text, success_criteria), projects(name)')
       .in('status', ['submitted', 'in_review'])
       .order('submitted_at', { ascending: true });
     setSubmissions((data ?? []) as unknown as Submission[]);
@@ -39,6 +51,21 @@ export default function ReviewQueuePage() {
   }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function selectSubmission(sub: Submission) {
+    setSelected(sub);
+    setReviewNotes(sub.review_notes ?? '');
+    setShowDiff(false);
+    setTaskActions([]);
+    if (sub.task_id) {
+      const { data } = await supabase
+        .from('actions')
+        .select('id, action_type, before_state, after_state, created_at')
+        .eq('target_id', sub.task_id)
+        .order('created_at', { ascending: true });
+      setTaskActions((data ?? []) as unknown as TaskAction[]);
+    }
+  }
 
   async function takeAction(submissionId: string, taskId: string | null, outcome: string) {
     setActioning(true);
@@ -105,7 +132,7 @@ export default function ReviewQueuePage() {
             {submissions.map(sub => (
               <div
                 key={sub.id}
-                onClick={() => { setSelected(sub); setReviewNotes(sub.review_notes ?? ''); }}
+                onClick={() => selectSubmission(sub)}
                 style={{
                   background: 'var(--white)', borderRadius: 10, border: `1px solid ${selected?.id === sub.id ? 'var(--accent)' : 'var(--border)'}`,
                   padding: '14px 16px', marginBottom: 8, cursor: 'pointer',
@@ -174,6 +201,36 @@ export default function ReviewQueuePage() {
                   ))}
                 </div>
               ) : null}
+
+              {/* Action diff */}
+              {taskActions.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      State changes ({taskActions.length})
+                    </div>
+                    <button
+                      onClick={() => setShowDiff(p => !p)}
+                      style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}
+                    >
+                      {showDiff ? 'Hide diff' : 'Show diff'}
+                    </button>
+                  </div>
+                  {showDiff && taskActions.map((action, i) => (
+                    <div key={action.id} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, color: 'var(--ink-3)', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{action.action_type.replace(/_/g, ' ')}</span>
+                        <span>{new Date(action.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <DiffViewer
+                        before={action.before_state ?? {}}
+                        after={action.after_state ?? {}}
+                        labelMap={{ kanban_status: 'status', started_at: 'started' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Video */}
               {selected.video_link && (

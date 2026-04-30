@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ClippyCharacter from '@/components/clippy/ClippyCharacter';
+import LivePreview from '@/components/code/LivePreview';
 
 interface CodeFile {
   name: string;
@@ -112,8 +113,12 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [addingFile, setAddingFile] = useState(false);
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(0.5);
   const termRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const splitDragging = useRef(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
 
   const file = files[activeFile];
 
@@ -206,6 +211,27 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
     setAddingFile(false);
   }
 
+  const onSplitDragStart = useCallback((e: React.MouseEvent) => {
+    splitDragging.current = true;
+    e.preventDefault();
+  }, []);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!splitDragging.current || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const ratio = Math.max(0.2, Math.min(0.8, (e.clientX - rect.left) / rect.width));
+      setSplitRatio(ratio);
+    }
+    function onUp() { splitDragging.current = false; }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
   const EDITOR_TABS = [
     { id: 'editor',   label: 'Editor' },
     { id: 'preview',  label: 'Preview' },
@@ -265,8 +291,9 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
       <div style={{
         display: 'flex', background: 'var(--white)',
         borderBottom: '1px solid var(--border)', padding: '0 4px',
+        alignItems: 'center',
       }}>
-        {EDITOR_TABS.map(t => (
+        {!splitMode && EDITOR_TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
@@ -280,10 +307,85 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
             {t.label}
           </button>
         ))}
+        {splitMode && (
+          <span style={{ padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--accent)', borderBottom: '2px solid var(--accent)' }}>
+            Split
+          </span>
+        )}
+        {/* Split toggle */}
+        <button
+          onClick={() => setSplitMode(p => !p)}
+          title={splitMode ? 'Exit split view' : 'Split editor / preview'}
+          style={{
+            marginLeft: 'auto', marginRight: 6,
+            padding: '4px 10px', background: splitMode ? 'var(--accent-light)' : 'var(--card)',
+            border: '1px solid var(--border)', borderRadius: 6,
+            fontSize: 11, fontWeight: 600,
+            color: splitMode ? 'var(--accent)' : 'var(--ink-2)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="8" height="18" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+            <rect x="13" y="3" width="8" height="18" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+          </svg>
+          {splitMode ? 'Exit split' : 'Split'}
+        </button>
       </div>
 
+      {/* Split pane mode */}
+      {splitMode && (
+        <div ref={splitContainerRef} style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+          {/* Editor pane */}
+          <div style={{ width: `${splitRatio * 100}%`, display: 'flex', flexShrink: 0, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{
+              padding: '8px 6px', background: 'var(--card)',
+              borderRight: '1px solid var(--border)',
+              color: 'var(--ink-3)', fontSize: 11, fontFamily: 'DM Mono, monospace',
+              lineHeight: 1.6, textAlign: 'right', userSelect: 'none', minWidth: 32,
+            }}>
+              {file.content.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
+            </div>
+            <textarea
+              value={file.content}
+              onChange={e => handleEditorChange(e.target.value)}
+              onKeyDown={handleEditorKeyDown}
+              spellCheck={false}
+              style={{
+                flex: 1, padding: '12px 12px',
+                background: 'var(--white)', border: 'none', resize: 'none', outline: 'none',
+                fontSize: 12, fontFamily: 'DM Mono, monospace', lineHeight: 1.6,
+                color: 'var(--ink)', minWidth: 0,
+              }}
+            />
+          </div>
+          {/* Drag handle */}
+          <div
+            onMouseDown={onSplitDragStart}
+            style={{
+              width: 4, flexShrink: 0, cursor: 'col-resize', background: 'var(--border)',
+              position: 'relative', zIndex: 10,
+            }}
+          />
+          {/* Preview pane */}
+          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', background: '#FAFAF8' }}>
+            <div style={{
+              padding: '4px 10px', background: 'var(--card)', borderBottom: '1px solid var(--border)',
+              fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', letterSpacing: '0.08em', textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
+              Live preview
+            </div>
+            <div style={{ height: 'calc(100% - 26px)' }}>
+              <LivePreview content={file.content} language={file.language} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Editor */}
-      {activeTab === 'editor' && (
+      {!splitMode && activeTab === 'editor' && (
         <div style={{ flex: 1, display: 'flex', minHeight: 400 }}>
           {/* Line numbers */}
           <div style={{
@@ -313,7 +415,7 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
       )}
 
       {/* Preview */}
-      {activeTab === 'preview' && (
+      {!splitMode && activeTab === 'preview' && (
         <div
           style={{
             flex: 1, padding: '16px 20px',
@@ -325,7 +427,7 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
       )}
 
       {/* AI Assist */}
-      {activeTab === 'ai' && (
+      {!splitMode && activeTab === 'ai' && (
         <div style={{ flex: 1, padding: 16, background: 'var(--white)', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ClippyCharacter mood={reviewLoading ? 'thinking' : review ? 'happy' : 'neutral'} size={36} />
@@ -388,7 +490,7 @@ export default function CodeEnv({ userId, businessId }: CodeEnvProps) {
       )}
 
       {/* Terminal */}
-      {activeTab === 'terminal' && (
+      {!splitMode && activeTab === 'terminal' && (
         <div style={{ flex: 1, background: '#1A1918', display: 'flex', flexDirection: 'column', minHeight: 300 }}>
           <div
             ref={termRef}
