@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import type { User, Business, DayStats } from '@/types';
 
 export async function POST(req: Request) {
-  const { userId } = await req.json();
+  const { userId, regenerate = false } = await req.json();
   const supabase = createServiceClient();
 
   const { data: user } = await supabase.from('users').select('*, businesses(*)').eq('id', userId).single();
@@ -50,19 +50,18 @@ export async function POST(req: Request) {
   try {
     const brief = await generateText('Generate the daily brief.', PROMPTS.dailyBrief(user as User, stats, business), 400);
 
-    // Fire-and-forget: check if teaching variants need regeneration
-    // (operator masterprompt context may have changed)
-    // V1.1: change trigger from page load to masterprompt regeneration event for cost efficiency
-    const userRole = (user as unknown as { role: string }).role;
-    if (['operator', 'owner'].includes(userRole)) {
-      const baseUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000';
-      fetch(`${baseUrl}/api/platform/regenerate-teaching-variants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ triggeredBy: userId }),
-      }).catch(() => {
-        // Background fire-and-forget — failures are non-blocking
-      });
+    // Only regenerate teaching variants when Nick explicitly regenerates the brief,
+    // not on every passive page load.
+    if (regenerate) {
+      const userRole = (user as unknown as { role: string }).role;
+      if (['operator', 'owner'].includes(userRole)) {
+        const baseUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000';
+        fetch(`${baseUrl}/api/platform/regenerate-teaching-variants`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ triggeredBy: userId }),
+        }).catch(() => {});
+      }
     }
 
     return Response.json({ brief });

@@ -90,13 +90,13 @@ export default function BriefPage() {
     load();
   }, []);
 
-  async function fetchBrief(userId: string) {
+  async function fetchBrief(userId: string, regenerate = false) {
     setLoading(true);
     try {
       const res = await fetch('/api/ai/brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, regenerate }),
       });
       const data = await res.json() as BriefData;
       setBrief(data.brief ?? null);
@@ -178,8 +178,9 @@ export default function BriefPage() {
             <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Personalised briefing from Claude</div>
           </div>
           <button
-            onClick={() => fetchBrief(user?.id ?? 'demo-user-id')}
+            onClick={() => fetchBrief(user?.id ?? 'demo-user-id', true)}
             disabled={loading}
+            title="Regenerates brief and syncs Charlene's Guide teaching variant"
             style={{
               marginLeft: 'auto', padding: '6px 12px',
               background: 'var(--card)', border: '1px solid var(--border)',
@@ -187,7 +188,7 @@ export default function BriefPage() {
               cursor: loading ? 'wait' : 'pointer',
             }}
           >
-            {loading ? 'Generating…' : 'Refresh'}
+            {loading ? 'Generating…' : 'Regenerate'}
           </button>
         </div>
 
