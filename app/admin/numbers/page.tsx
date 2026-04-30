@@ -22,9 +22,22 @@ export default function NumbersPage() {
   const [selectedVA, setSelectedVA] = useState('');
   const [numType, setNumType] = useState<'mobile' | 'landline'>('mobile');
   const [businessId, setBusinessId] = useState<string | null>(null);
+
+  // Invite state
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ url: string; name: string } | null>(null);
+  const [inviteError, setInviteError] = useState('');
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+
   const supabase = createClient();
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) setSessionToken(session.access_token);
+    });
+
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { setLoading(false); return; }
       const { data: u } = await supabase.from('users').select('business_id').eq('id', data.user.id).single();
@@ -49,6 +62,34 @@ export default function NumbersPage() {
       setLoading(false);
     });
   }, []);
+
+  async function invite() {
+    if (!inviteName.trim() || !inviteEmail.trim() || !sessionToken) return;
+    setInviting(true);
+    setInviteError('');
+    setInviteResult(null);
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ name: inviteName.trim(), email: inviteEmail.trim(), role: 'va' }),
+      });
+      const data = await res.json() as { userId?: string; inviteUrl?: string | null; warning?: string; error?: string };
+      if (data.error) { setInviteError(data.error); }
+      else {
+        setInviteResult({ url: data.inviteUrl ?? '', name: inviteName.trim() });
+        // Refresh VA list so new user appears in provision dropdown
+        const { data: vaList } = await supabase.from('users').select('*').eq('business_id', businessId!).eq('role', 'va');
+        setVas((vaList ?? []) as User[]);
+        setInviteName('');
+        setInviteEmail('');
+      }
+    } catch { setInviteError('Request failed — try again.'); }
+    setInviting(false);
+  }
 
   async function provision() {
     if (!selectedVA || !businessId) return;
@@ -89,6 +130,96 @@ export default function NumbersPage() {
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.4px', marginBottom: 4 }}>Numbers</div>
         <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>Provision and manage UK numbers per VA</div>
+      </div>
+
+      {/* Invite new VA */}
+      <div style={{
+        padding: '16px 18px', background: 'var(--white)',
+        borderRadius: 14, border: '1px solid var(--border)', marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Invite a new VA</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}>Creates their account and generates a one-time login link to send them.</div>
+
+        {inviteResult ? (
+          <div style={{ padding: '14px 16px', background: 'var(--accent-pale)', borderRadius: 10, border: '1px solid var(--accent-light)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 6 }}>
+              {inviteResult.name}&apos;s account created
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 10 }}>
+              Copy this link and send it to them. It expires in 1 hour and logs them straight in.
+            </div>
+            {inviteResult.url ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  readOnly
+                  value={inviteResult.url}
+                  style={{
+                    flex: 1, padding: '8px 10px', fontSize: 11, fontFamily: 'monospace',
+                    border: '1px solid var(--border)', borderRadius: 7, background: 'white',
+                    color: 'var(--ink)', outline: 'none', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}
+                  onClick={e => (e.target as HTMLInputElement).select()}
+                />
+                <button
+                  onClick={() => navigator.clipboard.writeText(inviteResult.url)}
+                  style={{
+                    padding: '8px 14px', background: 'var(--accent)', color: 'white',
+                    border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>Account created — send them a magic link from the Supabase dashboard.</div>
+            )}
+            <button
+              onClick={() => setInviteResult(null)}
+              style={{ marginTop: 10, background: 'none', border: 'none', fontSize: 11, color: 'var(--ink-3)', cursor: 'pointer', padding: 0 }}
+            >
+              Invite another
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 6 }}>Name</div>
+              <input
+                type="text"
+                placeholder="e.g. Rene"
+                value={inviteName}
+                onChange={e => setInviteName(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 6 }}>Email</div>
+              <input
+                type="email"
+                placeholder="rene@email.com"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && invite()}
+                style={{ width: '100%', padding: '9px 12px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--ink)', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <button
+              onClick={invite}
+              disabled={!inviteName.trim() || !inviteEmail.trim() || inviting}
+              style={{
+                padding: '9px 18px',
+                background: !inviteName.trim() || !inviteEmail.trim() || inviting ? 'var(--border)' : 'var(--accent)',
+                color: !inviteName.trim() || !inviteEmail.trim() || inviting ? 'var(--ink-3)' : 'white',
+                border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                cursor: !inviteName.trim() || !inviteEmail.trim() || inviting ? 'default' : 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              {inviting ? 'Creating…' : 'Invite'}
+            </button>
+          </div>
+        )}
+        {inviteError && <div style={{ marginTop: 10, fontSize: 12, color: 'var(--rose)' }}>{inviteError}</div>}
       </div>
 
       {/* Provision form */}
