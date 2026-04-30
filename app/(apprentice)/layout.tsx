@@ -225,8 +225,10 @@ export default function ApprenticeLayout({ children }: { children: React.ReactNo
         {children}
       </div>
 
-      {/* Guide panel — docked right, passes task ID when on task detail page */}
-      <GuidePanel pathTaskId={pathname.match(/^\/apprentice-tasks\/([^/]+)/)?.[1]} />
+      {/* Guide panel — hidden on task detail pages (ThreeColumnWorkSurface renders it there) */}
+      {!pathname.startsWith('/apprentice-tasks/') && (
+        <GuidePanel pathTaskId={undefined} />
+      )}
     </div>
   );
 }

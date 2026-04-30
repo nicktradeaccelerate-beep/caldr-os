@@ -17,7 +17,7 @@ function Pill({ label, color, bg }: { label: string; color: string; bg: string }
   );
 }
 
-export default function GuidePanel({ pathTaskId }: { pathTaskId?: string }) {
+export default function GuidePanel({ pathTaskId, embedded = false }: { pathTaskId?: string; embedded?: boolean }) {
   const [open, setOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -182,7 +182,7 @@ export default function GuidePanel({ pathTaskId }: { pathTaskId?: string }) {
   }
 
   return (
-    <div style={{ width: 320, flexShrink: 0, borderLeft: '1px solid #E2E8F0', background: 'white', display: 'flex', flexDirection: 'column', height: '100dvh', position: 'sticky', top: 0 }}>
+    <div style={{ width: embedded ? '100%' : 320, flexShrink: 0, borderLeft: embedded ? 'none' : '1px solid #E2E8F0', background: 'white', display: 'flex', flexDirection: 'column', height: embedded ? '100%' : '100dvh', position: embedded ? 'relative' : 'sticky', top: 0 }}>
       {/* Header */}
       <div style={{ padding: '12px 14px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
