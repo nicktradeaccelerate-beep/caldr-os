@@ -2,6 +2,107 @@
 
 ---
 
+## 2026-04-30 — V1.5.2: BFB Editorial Identity + Apprentice Code Editor
+
+### 1. BFB Editorial Identity — Task Detail View
+
+Task detail page (`app/(apprentice)/apprentice-tasks/[id]/page.tsx`) now renders the full BFB Mayfair editorial identity when `projects.slug === 'bfb'`.
+
+**Typography:**
+- Google Fonts loaded conditionally: Cormorant Garamond (headings + section labels), IM Fell English (body/description/paragraph), Courier Prime (monospace)
+- Fonts injected via `<link rel="stylesheet">` only when isBfb — no impact on non-BFB tasks
+
+**Palette corrected to spec:**
+- Antique gold: `#B8941F` (was `#9A7B3A`)
+- Obsidian: `#1A1A1A` (was `#1A1510`)
+- Oxblood `#722F37` added — used for medium readiness score (3/5)
+
+**Visual treatment:**
+- Headings: Cormorant Garamond, lighter weight (400), generous tracking
+- Body text: IM Fell English, 13.5px, 1.85 line height
+- Buttons: squared corners (border-radius: 2), uppercase letter-spacing, smaller tracking
+- Assessment card: left gold border rule instead of rounded card
+- Section labels: "References" not "Resources", "Criteria" not "Success criteria", "Assessment" not "Guide assessment"
+
+**Copy — no exclamation marks, Mayfair register:**
+- Backlog CTA: "Read the brief carefully. Review each criterion... Begin"
+- Work area: "Your submission" / "Set out your approach..."
+- Self-check button: "Request assessment"
+- In review: "Submitted. Your submission is with Nick for review."
+- Approved: "Approved. All criteria satisfied."
+
+**Dashboard kanban unchanged** — neutral apprentice aesthetic maintained.
+
+---
+
+### 2. Apprentice Code Editor — `/apprentice/code`
+
+**New files:**
+- `app/(apprentice)/apprentice/code/page.tsx` — main page (route `/apprentice/code`)
+- `components/apprentice/code/FileTree.tsx` — file tree left panel
+- `components/apprentice/code/TeachGuideChat.tsx` — guide chat right panel
+- `app/api/apprentice/code-assist/route.ts` — Anthropic streaming endpoint
+- `hooks/useSandboxFiles.ts` — localStorage file management
+
+**Navigation:** "Code" added to `NAV_ITEMS` in `app/(apprentice)/layout.tsx` (desktop sidebar + mobile tab bar). New icon: `</>` brackets SVG.
+
+**Package added:** `@monaco-editor/react ^4.7.0`
+
+**Architecture:**
+- Three-column layout via `ThreeColumnWorkSurface`
+- Left (220px): FileTree with add/delete, localStorage persistence per user
+- Centre: Monaco editor (dynamic import, Courier Prime font) + optional sandbox preview
+- Right (360px): TeachGuideChat streaming chat panel
+
+**Sandbox runtime:**
+- `sandbox="allow-scripts allow-modals"` — no `allow-same-origin`, no shell, no Supabase/GitHub/Vercel access
+- HTML entry: linked CSS/JS files inlined from sibling sandbox files before srcdoc injection
+- React/JSX: Babel standalone + React 18 UMD loaded from unpkg automatically on detection
+- CDN whitelist enforced via iframe sandbox (only scripts already in srcdoc execute — no new fetches possible without `allow-same-origin`)
+- Key press `Run ▶` triggers new srcdoc generation; each run increments key to force iframe remount
+
+**Claude integration:**
+- Streaming via `anthropic.messages.stream()` with SSE response
+- Context per request: active file name + content (capped 3000 chars), task title, project name
+- Cost logged async to `api_usage_log` with `feature: code_assist_teach` or `code_assist_generate`
+- Model: claude-sonnet-4-20250514
+
+**Teach mode (default):**
+- System prompt refuses code on first request — asks what apprentice has tried, what their approach is
+- Override phrase: "show me the full code" / "write the complete solution"
+- Max 5 lines of code per response otherwise
+- Visual: warm gold border ring (`rgba(184,148,31,0.25)`) on right panel container
+- Mode toggle persists in React state (not localStorage — resets to Teach on page reload)
+
+**Generate mode:**
+- Standard code generation, direct
+- Visual: neutral border
+- Tracked separately in usage logs
+
+**"Apply to file" button:**
+- Code blocks in Claude responses include inline "Apply to file" button
+- Overwrites active file content in Monaco editor
+
+---
+
+### Option B — Autonomous Claude Code Agent (Deliberately Deferred)
+
+**What it would be:** Server-side process accepting natural-language tasks, shelling out to the `claude` CLI or using Anthropic tool-use/computer-use API in agent mode, executing multi-step code changes autonomously.
+
+**Why deferred:**
+
+1. **Security boundary.** An agent executing shell commands in a shared environment creates unauditable attack surface. Charlene's sandbox must stay isolated.
+
+2. **Cost unpredictability.** Agentic tool-use loops have no natural token ceiling. Without hard per-user cost caps enforced at infrastructure level, this is financially uncontrolled.
+
+3. **Pedagogical harm.** The entire apprentice model requires Charlene to think through problems. An autonomous agent bypasses the Teach mode guardrails and undermines the learning contract.
+
+4. **Vercel/Edge constraint.** Long-running agent loops with stateful tool calls require a persistent process (Railway, Fly, Deno worker) — not available in the current serverless deployment.
+
+**Conditions to revisit:** When Charlene has completed the programme and operates as VA/operator; when a dedicated sandboxed worker environment exists with hard cost caps; when the use case is generation/automation rather than learning.
+
+---
+
 ## 2026-04-29 — V1 re-seed + final verification (SETUP_RESULTS.md)
 
 ### Re-seed complete

@@ -23,15 +23,17 @@ interface BudgetStatus {
 }
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
-  { href: '/guide',     label: 'Guide',     icon: 'sparkle' },
-  { href: '/portfolio', label: 'Portfolio', icon: 'award' },
+  { href: '/dashboard',       label: 'Dashboard', icon: 'grid' },
+  { href: '/guide',           label: 'Guide',     icon: 'sparkle' },
+  { href: '/portfolio',       label: 'Portfolio', icon: 'award' },
+  { href: '/apprentice/code', label: 'Code',      icon: 'code' },
 ];
 
 const ICONS: Record<string, React.ReactNode> = {
   grid: <><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/></>,
   sparkle: <path d="M12 2l2.4 7.2H22l-6.2 4.5 2.4 7.2L12 16.4l-6.2 4.5 2.4-7.2L2 9.2h7.6z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>,
   award: <><circle cx="12" cy="8" r="5" stroke="currentColor" strokeWidth="1.5" fill="none"/><path d="M8.21 13.89L7 23l5-3 5 3-1.21-9.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></>,
+  code: <><polyline points="16 18 22 12 16 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><polyline points="8 6 2 12 8 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></>,
 };
 
 function NavIcon({ name }: { name: string }) {
