@@ -3,7 +3,9 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import type { SandboxFile } from '@/hooks/useSandboxFiles';
 
 interface Submission {
   id: string;
@@ -28,10 +30,16 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   draft:             { label: 'Draft',             color: '#64748B', bg: '#F1F5F9' },
 };
 
+interface SandboxProject {
+  files: SandboxFile[];
+  active: string;
+}
+
 export default function PortfolioPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [sandboxProject, setSandboxProject] = useState<SandboxProject | null>(null);
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -45,6 +53,16 @@ export default function PortfolioPage() {
       .order('submitted_at', { ascending: false });
 
     setSubmissions((data ?? []) as unknown as Submission[]);
+
+    // Load sandbox project from localStorage
+    try {
+      const raw = localStorage.getItem(`caldr:sandbox:${authUser.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as SandboxProject;
+        if (parsed.files?.length) setSandboxProject(parsed);
+      }
+    } catch { /* localStorage unavailable */ }
+
     setLoading(false);
   }, [supabase]);
 
@@ -197,6 +215,75 @@ export default function PortfolioPage() {
         </div>
       )}
 
+      {/* Personal projects gallery */}
+      {sandboxProject && (
+        <div style={{ marginTop: 32 }}>
+          <div style={{ marginBottom: 14 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.3px', margin: '0 0 4px' }}>
+              Personal projects
+            </h2>
+            <div style={{ fontSize: 13, color: '#64748B' }}>Code you've built in the sandbox</div>
+          </div>
+          <Link href="/apprentice/code" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white', borderRadius: 12, border: '1px solid #E2E8F0',
+              padding: '16px 20px', cursor: 'pointer', transition: 'border-color 0.15s',
+              display: 'flex', gap: 16, alignItems: 'flex-start',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = '#1B4332')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = '#E2E8F0')}
+            >
+              {/* Preview thumbnail */}
+              <div style={{
+                width: 100, height: 72, flexShrink: 0, borderRadius: 8,
+                background: '#0F172A', overflow: 'hidden', position: 'relative',
+                display: 'flex', flexDirection: 'column', gap: 4, padding: 8,
+              }}>
+                {sandboxProject.files.slice(0, 4).map((f, i) => (
+                  <div key={f.name} style={{
+                    height: 8, borderRadius: 2,
+                    background: i === 0 ? '#60A5FA' : i === 1 ? '#4ADE80' : i === 2 ? '#FACC15' : '#94A3B8',
+                    width: `${[85, 65, 75, 50][i]}%`,
+                    opacity: 0.8,
+                  }} />
+                ))}
+                <div style={{
+                  position: 'absolute', bottom: 6, right: 6,
+                  fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace',
+                }}>
+                  {sandboxProject.files.length} file{sandboxProject.files.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', marginBottom: 6 }}>
+                  Sandbox
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {sandboxProject.files.map(f => (
+                    <span key={f.name} style={{
+                      fontSize: 10, fontWeight: 600,
+                      color: f.name === sandboxProject.active ? '#1B4332' : '#64748B',
+                      background: f.name === sandboxProject.active ? '#DCFCE7' : '#F1F5F9',
+                      padding: '2px 7px', borderRadius: 6,
+                      border: f.name === sandboxProject.active ? '1px solid #BBF7D0' : '1px solid transparent',
+                    }}>
+                      {f.name}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                    <polyline points="16 18 22 12 16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <polyline points="8 6 2 12 8 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Open in code editor →
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

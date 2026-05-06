@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import GuidePanel from '@/components/apprentice/GuidePanel';
+import ProgressWidget from '@/components/apprentice/ProgressWidget';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface ApprenticeUser {
@@ -166,6 +167,9 @@ export default function ApprenticeLayout({ children }: { children: React.ReactNo
             );
           })}
         </nav>
+
+        {/* Progress widget */}
+        <ProgressWidget userId={user?.id ?? null} />
 
         {/* Budget status */}
         {budget && (
