@@ -39,7 +39,7 @@ Be direct. Nick will also review — your job is to catch issues before they was
 
   let result;
   try {
-    result = await generateWithCost(prompt, 'You are a quality reviewer for an apprentice developer\'s work submission. Be precise, direct, and commercially grounded.', 600);
+    result = await generateWithCost(prompt, 'You are a quality reviewer for an apprentice developer\'s work submission. Be precise, direct, and commercially grounded.', 600, { fast: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI error';
     return Response.json({ error: msg }, { status: 500 });

@@ -95,7 +95,7 @@ Be helpful, concise, and practical. VAs are busy — keep responses focused and 
   let reply: string;
   try {
     if (model === 'claude') {
-      reply = await generateText(message, systemPrompt, 500);
+      reply = await generateText(message, systemPrompt, 500, { fast: true });
     } else if (model === 'gpt') {
       reply = await callGPT(message, history, systemPrompt);
     } else {

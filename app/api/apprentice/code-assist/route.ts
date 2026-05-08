@@ -1,9 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient } from '@/lib/supabase/server';
 
-const MODEL = 'claude-sonnet-4-20250514';
-const COST_PER_1K_INPUT_GBP = 0.0024;
-const COST_PER_1K_OUTPUT_GBP = 0.012;
+const MODEL_SONNET = 'claude-sonnet-4-6';
+const MODEL_HAIKU  = 'claude-haiku-4-5-20251001';
+
+const PRICING = {
+  sonnet: { input: 0.0024,  output: 0.012  },
+  haiku:  { input: 0.00064, output: 0.0032 },
+} as const;
 
 const TEACH_PROMPT = (ctx: string) => `You are a patient coding mentor working with an apprentice at Newton & Sinclair.
 The apprentice is learning to code through real project work on the Back From Black lead intelligence platform.
@@ -60,14 +64,19 @@ export async function POST(req: Request) {
 
     const ctx = buildContext(body);
     const systemPrompt = mode === 'teach' ? TEACH_PROMPT(ctx) : GENERATE_PROMPT(ctx);
-    const maxTokens = mode === 'teach' ? 700 : 2000;
+    // Teach: Haiku handles socratic guidance well and is ~75% cheaper
+    // Generate: Sonnet for code quality; cap at 1200 (was 2000)
+    const isTeach  = mode === 'teach';
+    const model    = isTeach ? MODEL_HAIKU : MODEL_SONNET;
+    const maxTokens = isTeach ? 700 : 1200;
+    const pricing  = isTeach ? PRICING.haiku : PRICING.sonnet;
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const stream = await client.messages.stream({
-      model: MODEL,
+      model,
       max_tokens: maxTokens,
-      system: systemPrompt,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages,
     });
 
@@ -96,13 +105,13 @@ export async function POST(req: Request) {
 
           // Log cost async — don't block the stream
           if (userId && (totalIn || totalOut)) {
-            const cost = (totalIn / 1000) * COST_PER_1K_INPUT_GBP + (totalOut / 1000) * COST_PER_1K_OUTPUT_GBP;
+            const cost = (totalIn / 1000) * pricing.input + (totalOut / 1000) * pricing.output;
             try {
               const supabase = createServiceClient();
               await supabase.from('api_usage_log').insert({
                 user_id: userId,
                 feature: `code_assist_${mode}`,
-                model: MODEL,
+                model,
                 tokens_in: totalIn,
                 tokens_out: totalOut,
                 api_cost_gbp: cost,

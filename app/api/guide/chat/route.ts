@@ -103,9 +103,12 @@ export async function POST(req: Request) {
 
   const systemPrompt = selectSystemPrompt(teachingVariant, projectSlug);
 
+  // Keep last 6 messages to prevent input token blowup in long sessions
+  const trimmedMessages = messages.slice(-6);
+
   let result;
   try {
-    result = await generateConversation(messages, systemPrompt, 900);
+    result = await generateConversation(trimmedMessages, systemPrompt, 900, { cache: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI error';
     return Response.json({ error: msg }, { status: 500 });

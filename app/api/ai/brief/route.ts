@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   };
 
   try {
-    const brief = await generateText('Generate the daily brief.', PROMPTS.dailyBrief(user as User, stats, business), 400);
+    const brief = await generateText('Generate the daily brief.', PROMPTS.dailyBrief(user as User, stats, business), 400, { fast: true });
 
     // Only regenerate teaching variants when Nick explicitly regenerates the brief,
     // not on every passive page load.
