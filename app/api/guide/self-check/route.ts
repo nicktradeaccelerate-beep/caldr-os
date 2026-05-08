@@ -1,4 +1,4 @@
-import { generateWithCost } from '@/lib/ai/claude';
+import { generateWithCost, MODEL_FAST } from '@/lib/ai/claude';
 import { createServiceClient } from '@/lib/supabase/server';
 
 interface RequestBody {
@@ -49,7 +49,7 @@ Be direct. Nick will also review — your job is to catch issues before they was
   await supabase.from('api_usage_log').insert({
     user_id: userId,
     feature: 'guide_self_check',
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL_FAST,
     tokens_in: result.tokensIn,
     tokens_out: result.tokensOut,
     api_cost_gbp: result.costGbp,

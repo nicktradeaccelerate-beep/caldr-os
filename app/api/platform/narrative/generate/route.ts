@@ -1,4 +1,4 @@
-import { generateWithCost } from '@/lib/ai/claude';
+import { generateWithCost, MODEL_FAST } from '@/lib/ai/claude';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
@@ -65,7 +65,8 @@ Write 2-3 short paragraphs. Be direct — Nick reads this in the morning before 
     result = await generateWithCost(
       prompt,
       'You write operational summaries. Plain English, no bullet points, no headers. Direct and factual.',
-      400
+      400,
+      { fast: true },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'AI error';
@@ -76,7 +77,7 @@ Write 2-3 short paragraphs. Be direct — Nick reads this in the morning before 
   await supabase.from('api_usage_log').insert({
     user_id: '00000000-0000-0000-0000-000000000000',
     feature: 'narrative_daily',
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL_FAST,
     tokens_in: result.tokensIn,
     tokens_out: result.tokensOut,
     api_cost_gbp: result.costGbp,

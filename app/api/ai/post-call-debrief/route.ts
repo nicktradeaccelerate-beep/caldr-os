@@ -1,4 +1,4 @@
-import { generateText } from '@/lib/ai/claude';
+import { generateWithCost, MODEL } from '@/lib/ai/claude';
 import { PROMPTS } from '@/lib/ai/prompts';
 import { createServiceClient } from '@/lib/supabase/server';
 import type { CompletedCall, Business } from '@/types';
@@ -23,17 +23,25 @@ export async function POST(req: Request) {
   const systemPrompt = PROMPTS.postCallDebrief(call, business as Business);
 
   try {
-    const debrief = await generateText('Generate the post-call debrief.', systemPrompt, 300);
+    const result = await generateWithCost('Generate the post-call debrief.', systemPrompt, 300);
 
-    // Save coaching note back to the call record
     if (callId) {
       await supabase.from('calls').update({
-        coaching_note: debrief,
-        ai_score: extractScore(debrief),
+        coaching_note: result.text,
+        ai_score: extractScore(result.text),
       }).eq('id', callId);
     }
 
-    return Response.json({ debrief });
+    supabase.from('api_usage_log').insert({
+      user_id: '00000000-0000-0000-0000-000000000000',
+      feature: 'post_call_debrief',
+      model: MODEL,
+      tokens_in: result.tokensIn,
+      tokens_out: result.tokensOut,
+      api_cost_gbp: result.costGbp,
+    }).then(() => {}, () => {});
+
+    return Response.json({ debrief: result.text });
   } catch {
     return Response.json({ error: 'AI unavailable' }, { status: 500 });
   }

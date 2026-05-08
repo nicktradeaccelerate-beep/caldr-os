@@ -1,4 +1,4 @@
-import { generateWithCost } from '@/lib/ai/claude';
+import { generateWithCost, MODEL } from '@/lib/ai/claude';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createServerClient, type CookieOptions } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
@@ -79,7 +79,7 @@ Return a JSON object with this exact structure:
     user_id: session.user.id,
     project_id: projectId,
     feature: 'teaching_variant_generate',
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL,
     tokens_in: result.tokensIn,
     tokens_out: result.tokensOut,
     api_cost_gbp: result.costGbp,

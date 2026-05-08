@@ -1,4 +1,4 @@
-import { generateText } from '@/lib/ai/claude';
+import { generateWithCost, MODEL_FAST } from '@/lib/ai/claude';
 import { PROMPTS } from '@/lib/ai/prompts';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getContactHistory } from '@/lib/bfb/contactHistory';
@@ -43,8 +43,19 @@ export async function POST(req: Request) {
     : `You are a pre-call AI brief. Caller: ${call.contactName ?? 'Unknown'} from ${call.area ?? 'Unknown area'}. Give a 3-line brief.`;
 
   try {
-    const brief = await generateText('Give me the pre-call brief now.', systemPrompt, 220);
-    return Response.json({ brief, contactHistory });
+    const result = await generateWithCost('Give me the pre-call brief now.', systemPrompt, 220, { fast: true });
+
+    // VA ID not available at this point — log against business sentinel
+    supabase.from('api_usage_log').insert({
+      user_id: '00000000-0000-0000-0000-000000000000',
+      feature: 'pre_call_brief',
+      model: MODEL_FAST,
+      tokens_in: result.tokensIn,
+      tokens_out: result.tokensOut,
+      api_cost_gbp: result.costGbp,
+    }).then(() => {}, () => {});
+
+    return Response.json({ brief: result.text, contactHistory });
   } catch {
     return Response.json({ brief: null, contactHistory }, { status: 200 });
   }

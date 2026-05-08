@@ -1,4 +1,4 @@
-import { generateWithCost } from '@/lib/ai/claude';
+import { generateWithCost, MODEL } from '@/lib/ai/claude';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
@@ -69,7 +69,7 @@ Return JSON with structure:
         user_id: body.triggeredBy ?? '00000000-0000-0000-0000-000000000000',
         project_id: variant.product_id,
         feature: 'teaching_variant_auto_regen',
-        model: 'claude-sonnet-4-20250514',
+        model: MODEL,
         tokens_in: result.tokensIn,
         tokens_out: result.tokensOut,
         api_cost_gbp: result.costGbp,

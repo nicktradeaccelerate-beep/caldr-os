@@ -1,4 +1,4 @@
-import { generateConversation, type ChatMessage } from '@/lib/ai/claude';
+import { generateConversation, MODEL, type ChatMessage } from '@/lib/ai/claude';
 import { createServiceClient } from '@/lib/supabase/server';
 
 interface RequestBody {
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
     user_id: userId,
     project_id: projectId,
     feature: mode === 'personal' ? 'guide_personal' : taskId ? 'guide_work_task' : 'guide_work',
-    model: 'claude-sonnet-4-20250514',
+    model: MODEL,
     tokens_in: result.tokensIn,
     tokens_out: result.tokensOut,
     api_cost_gbp: result.costGbp,

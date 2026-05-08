@@ -10,8 +10,8 @@ function getClient(): Anthropic {
   return _anthropic;
 }
 
-const MODEL = 'claude-sonnet-4-6';
-const MODEL_FAST = 'claude-haiku-4-5-20251001';
+export const MODEL = 'claude-sonnet-4-6';
+export const MODEL_FAST = 'claude-haiku-4-5-20251001';
 
 // Sonnet 4.6: $3/$15 per 1M tokens → ~£0.80/USD
 const SONNET_INPUT_GBP  = 0.0024;   // per 1K tokens
