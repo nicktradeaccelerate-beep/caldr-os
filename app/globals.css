@@ -2,42 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;300;400;500;600;700&family=DM+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/*
+ * Minnie / Newton & Sinclair house tokens.
+ * Accent vars are injected by BrandProvider per-business; the base palette
+ * (ground/card/ink/border) holds the parchment+ink aesthetic for the default
+ * Caldr OS workspace. Per-business white-label still overrides --accent.
+ */
 :root {
-  /* Ground */
-  --ground:        #FAFAF8;
-  --white:         #FFFFFF;
-  --card:          #F5F4F0;
-  --border:        #E8E6DF;
+  /* Surfaces */
+  --ground:        #F0E6D5;   /* warm biscuit parchment */
+  --white:         #FAF4E8;   /* cream */
+  --card:          #E5D8C0;   /* deeper parchment for nested surfaces */
+  --border:        rgba(184, 147, 90, 0.28);  /* gold hairline */
 
   /* Ink */
-  --ink:           #1A1918;
-  --ink-2:         #6B6860;
-  --ink-3:         #A8A69E;
+  --ink:           #0F0D0B;
+  --ink-2:         #4D453C;
+  --ink-3:         #766B5C;
 
-  /* Accent — forest green */
-  --accent:        #1B4332;
-  --accent-mid:    #40916C;
-  --accent-light:  #E8F5EE;
-  --accent-pale:   #F2FAF5;
+  /* Accent — oxblood by default (per-business override via BrandProvider) */
+  --accent:        #5C1A1A;
+  --accent-mid:    #8B6240;
+  --accent-light:  rgba(92, 26, 26, 0.10);
+  --accent-pale:   rgba(184, 147, 90, 0.10);
 
-  /* Rose — Clippy / hearts */
+  /* Gold — used for hairlines and the wordmark */
+  --gold:          #B8935A;
+  --gold-light:    #D4B48A;
+
+  /* Rose — Clippy / hearts (kept distinct from oxblood) */
   --rose:          #E11D48;
   --rose-mid:      #FB7185;
   --rose-light:    #FFF1F3;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);
-  --shadow-md: 0 2px 12px rgba(0,0,0,0.06);
-  --shadow-lg: 0 4px 24px rgba(0,0,0,0.09);
+  /* Shadows — hairline + soft */
+  --shadow-sm: 0 0 0 0.5px rgba(184, 147, 90, 0.18), 0 1px 2px rgba(26, 23, 20, 0.04);
+  --shadow-md: 0 4px 16px rgba(26, 23, 20, 0.06), 0 0 0 0.5px rgba(184, 147, 90, 0.18);
+  --shadow-lg: 0 24px 64px rgba(26, 23, 20, 0.12);
 
   /* Radii */
-  --r-xs: 6px;
+  --r-xs: 4px;
   --r-sm: 8px;
-  --r:    12px;
-  --r-lg: 16px;
-  --r-xl: 50px;
+  --r:    14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
 }
 
 *, *::before, *::after {
@@ -52,54 +62,63 @@ html {
 body {
   background: var(--ground);
   color: var(--ink);
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Jost', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 400;
   font-size: 14px;
   line-height: 1.5;
-  /* iOS safe-area: push content below status bar & above home indicator */
+  letter-spacing: -0.005em;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
 
+/* Serif (Cormorant) reserved for brand wordmarks only */
+.serif, .wordmark {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
 /* Scrollbars */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(26,25,24,0.16); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(26,25,24,0.28); }
+::-webkit-scrollbar-thumb { background: rgba(184, 147, 90, 0.30); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(184, 147, 90, 0.50); }
 
 /* Mono */
-code, .mono { font-family: 'DM Mono', monospace; }
+code, .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; }
 
 /* Focus ring */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 1.5px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* ── Dark mode ────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --ground:        #0F0E0D;
-  --white:         #1A1918;
-  --card:          #242220;
-  --border:        #2E2B28;
+  --ground:        #1A1714;
+  --white:         #2C2820;
+  --card:          #3D3830;
+  --border:        rgba(212, 180, 138, 0.18);
 
-  --ink:           #F0EDE8;
-  --ink-2:         #A8A69E;
-  --ink-3:         #6B6860;
+  --ink:           #F7F3EE;
+  --ink-2:         #D4B48A;
+  --ink-3:         #8A837A;
 
-  --accent:        #52B788;
-  --accent-mid:    #74C69D;
-  --accent-light:  #1B3D2B;
-  --accent-pale:   #152E20;
+  --accent:        #B8935A;
+  --accent-mid:    #D4B48A;
+  --accent-light:  rgba(184, 147, 90, 0.15);
+  --accent-pale:   rgba(184, 147, 90, 0.08);
+
+  --gold:          #D4B48A;
+  --gold-light:    #E8D5B5;
 
   --rose:          #FB7185;
   --rose-mid:      #FCA5A5;
-  --rose-light:    #2D1520;
+  --rose-light:    rgba(251, 113, 133, 0.12);
 
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04);
-  --shadow-md: 0 2px 12px rgba(0,0,0,0.35);
-  --shadow-lg: 0 4px 24px rgba(0,0,0,0.45);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(212, 180, 138, 0.10);
+  --shadow-md: 0 2px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,0.6);
 }
 
 @layer utilities {

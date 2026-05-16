@@ -4,19 +4,19 @@ import { BrandProvider } from '@/context/BrandContext';
 import InstallPrompt from '@/components/shared/InstallPrompt';
 
 export const metadata: Metadata = {
-  title: 'Caldr OS',
-  description: 'AI-powered work OS for remote VAs',
+  title: 'Minnie · OS',
+  description: 'The intelligent work OS — Newton & Sinclair',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Caldr OS',
+    title: 'Minnie OS',
     startupImage: '/icons/icon-512.png',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1B4332',
+  themeColor: '#5C1A1A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="Caldr OS" />
+        <meta name="application-name" content="Minnie OS" />
       </head>
       <body>
         <BrandProvider>

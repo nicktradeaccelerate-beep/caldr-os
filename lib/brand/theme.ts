@@ -14,9 +14,11 @@ export interface BrandConfig {
 
 export const DEFAULT_BRAND: BrandConfig = {
   businessId: '',
-  businessName: 'Caldr OS',
-  shortName: 'Caldr',
-  accentColor: '#1B4332',
+  businessName: 'Minnie OS',
+  shortName: 'Minnie',
+  // Newton & Sinclair house default: oxblood.
+  // Per-business white-label can override via businesses.accent_color.
+  accentColor: '#5C1A1A',
   logoUrl: null,
   clippyName: 'Clippy',
   font: 'dm-sans',
