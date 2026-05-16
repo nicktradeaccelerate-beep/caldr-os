@@ -8,7 +8,6 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import OnboardingTour from '@/components/clippy/OnboardingTour';
-import { Logo } from '@/components/brand/Logo';
 import type { User } from '@/types';
 
 const NAV_ITEMS = [
@@ -93,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh', background: 'var(--ground)' }}>
+    <div style={{ display: 'flex', minHeight: '100dvh' }}>
       {/* Sidebar */}
       <aside style={{
         width: 220,
@@ -108,18 +107,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }}>
         {/* Logo */}
         <div style={{
-          padding: '20px 16px 16px',
+          padding: '18px 16px 14px',
           borderBottom: '0.5px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
         }}>
-          <Logo size="sm" suffix="OS" inline />
           <div style={{
-            fontSize: 10,
-            color: 'var(--ink-3)',
-            marginTop: 6,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
+            width: 32,
+            height: 32,
+            background: 'var(--accent)',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
           }}>
-            {user?.name ?? '…'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3C8.13 3 5 6.13 5 10v9a1 1 0 0 0 1 1h4v-5H7v-5a5 5 0 0 1 10 0v5h-3v5h4a1 1 0 0 0 1-1v-9c0-3.87-3.13-7-7-7z" fill="white"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)', letterSpacing: '-0.2px' }}>Caldr OS</div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 1 }}>
+              {user?.name ?? '…'}
+            </div>
           </div>
         </div>
 

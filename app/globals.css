@@ -60,7 +60,10 @@ html {
 }
 
 body {
-  background: var(--ground);
+  /* Newton & Sinclair house gradient: lavender → cream → peach.
+     Fixed attachment so the gradient stays put while content scrolls. */
+  background: linear-gradient(105deg, #DAC8ED 0%, #ECDECF 55%, #F4DCC0 100%);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: 'Jost', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-weight: 400;
